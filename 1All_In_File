@@ -1,0 +1,896 @@
+AUTOPROCESSMAP v1.08 - SINGLE FILE VERSION
+==========================================
+
+This is your complete AutoProcessMap as ONE FILE (app.py)
+Just create this single file in GitHub and deploy!
+
+FILE: app.py
+------------
+
+from flask import Flask, request, jsonify, session, send_file
+from flask_cors import CORS
+import uuid
+import json
+import io
+from datetime import datetime
+import weasyprint
+
+app = Flask(__name__)
+app.secret_key = 'autoprocessmap-secret-key-2024'
+CORS(app)
+
+sessions = {}
+
+@app.route('/')
+def index():
+    return '''
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AutoProcessMap v1.08</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+        
+        .main-content {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-bottom: 20px;
+        }
+        
+        .tabs {
+            display: flex;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+        
+        .tab {
+            padding: 15px 25px;
+            background: #f8fafc;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            color: #64748b;
+            border-radius: 10px 10px 0 0;
+            margin-right: 5px;
+            transition: all 0.3s ease;
+        }
+        
+        .tab.active {
+            background: #2563eb;
+            color: white;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #374151;
+        }
+        
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+        }
+        
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #2563eb;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(37, 99, 235, 0.4);
+        }
+        
+        .btn-secondary {
+            background: linear-gradient(135deg, #6b7280, #4b5563);
+        }
+        
+        .btn-success {
+            background: linear-gradient(135deg, #10b981, #059669);
+        }
+        
+        .steps-container {
+            margin-top: 30px;
+        }
+        
+        .step-item {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+        }
+        
+        .step-header {
+            font-weight: 600;
+            color: #1e40af;
+            margin-bottom: 5px;
+        }
+        
+        .step-meta {
+            font-size: 14px;
+            color: #6b7280;
+            margin-bottom: 8px;
+        }
+        
+        .process-preview {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8fafc;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+        }
+        
+        .process-stats {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .stat-item {
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #2563eb;
+        }
+        
+        .stat-label {
+            font-size: 14px;
+            color: #6b7280;
+        }
+        
+        .svg-container {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            overflow-x: auto;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .message {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+        
+        .message.success {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #a7f3d0;
+        }
+        
+        .message.error {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fca5a5;
+        }
+        
+        .sample-data-section {
+            background: #eff6ff;
+            border: 2px solid #2563eb;
+            border-radius: 12px;
+            padding: 25px;
+            margin: 30px 0;
+            text-align: center;
+        }
+        
+        .sample-data-section h3 {
+            color: #1e40af;
+            margin-bottom: 15px;
+            font-size: 1.5rem;
+        }
+        
+        .sample-data-section p {
+            color: #3730a3;
+            margin-bottom: 20px;
+            font-size: 1.1rem;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .main-content {
+                padding: 20px;
+            }
+            
+            .tabs {
+                flex-wrap: wrap;
+            }
+            
+            .tab {
+                flex: 1;
+                min-width: 120px;
+                margin-bottom: 5px;
+            }
+            
+            .process-stats {
+                flex-direction: column;
+                gap: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>AutoProcessMap v1.08</h1>
+            <p>Professional Process Mapping & Documentation Platform</p>
+        </div>
+        
+        <div class="main-content">
+            <div class="tabs">
+                <button class="tab active" onclick="switchTab('build')">Build SOW Live</button>
+                <button class="tab" onclick="switchTab('visual')">Visual Story</button>
+            </div>
+            
+            <div id="build-content" class="tab-content active">
+                <div id="message-container"></div>
+                
+                <div class="form-group">
+                    <label for="step-name">Step Name:</label>
+                    <input type="text" id="step-name" placeholder="Enter step name">
+                </div>
+                
+                <div class="form-group">
+                    <label for="step-description">Description:</label>
+                    <textarea id="step-description" rows="3" placeholder="Describe this step"></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label for="step-responsible">Responsible Party:</label>
+                    <select id="step-responsible">
+                        <option value="">Select responsible party</option>
+                        <option value="Customer Service">Customer Service</option>
+                        <option value="Management">Management</option>
+                        <option value="IT Department">IT Department</option>
+                        <option value="Risk Assessment">Risk Assessment</option>
+                        <option value="Compliance Team">Compliance Team</option>
+                        <option value="Training Team">Training Team</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="step-kpi">KPI/Metric:</label>
+                    <input type="text" id="step-kpi" placeholder="e.g., Completion time: 2 hours">
+                </div>
+                
+                <div class="form-group">
+                    <label for="step-priority">Priority:</label>
+                    <select id="step-priority">
+                        <option value="High">High</option>
+                        <option value="Medium">Medium</option>
+                        <option value="Low">Low</option>
+                    </select>
+                </div>
+                
+                <button class="btn" onclick="addStep()">Add Step</button>
+                <button class="btn btn-secondary" onclick="generateProcessMap()">Generate Process Map</button>
+                <button class="btn btn-success" onclick="downloadProcessMap()">Download Process Map</button>
+                
+                <div class="sample-data-section">
+                    <h3>🚀 Try with Sample Data</h3>
+                    <p>See AutoProcessMap in action with a complete 9-step customer onboarding process</p>
+                    <button class="btn" onclick="loadSampleData()">Load Sample Data</button>
+                </div>
+                
+                <div class="steps-container">
+                    <h3>Current Steps:</h3>
+                    <div id="steps-list"></div>
+                </div>
+                
+                <div class="process-preview">
+                    <h3>Process Preview:</h3>
+                    <div class="process-stats">
+                        <div class="stat-item">
+                            <div class="stat-value" id="steps-count">0</div>
+                            <div class="stat-label">Steps</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="lanes-count">0</div>
+                            <div class="stat-label">Lanes</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="zoom-level">100%</div>
+                            <div class="stat-label">Zoom</div>
+                        </div>
+                    </div>
+                    <div class="svg-container" id="svg-container">
+                        <p style="text-align: center; color: #6b7280; padding: 40px;">
+                            Add steps and generate your process map to see the swimming lane diagram here.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="visual-content" class="tab-content">
+                <div class="sample-data-section">
+                    <h3>🎨 Visual Story</h3>
+                    <p>Transform your process map into a beautiful visual story</p>
+                    <div id="visual-story-container">
+                        <p style="text-align: center; color: #6b7280; padding: 40px;">
+                            Load sample data or add your own process steps, then generate a visual story.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentSession = null;
+        let currentSteps = [];
+
+        window.onload = function() {
+            startSession();
+        };
+
+        function startSession() {
+            fetch('/api/start_session', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                currentSession = data.session_id;
+                showMessage(data.message, 'success');
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showMessage('Failed to start session', 'error');
+            });
+        }
+
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            document.getElementById(tabName + '-content').classList.add('active');
+            
+            event.target.classList.add('active');
+        }
+
+        function addStep() {
+            const stepData = {
+                name: document.getElementById('step-name').value,
+                description: document.getElementById('step-description').value,
+                responsible: document.getElementById('step-responsible').value,
+                kpi: document.getElementById('step-kpi').value,
+                priority: document.getElementById('step-priority').value
+            };
+
+            if (!stepData.name || !stepData.responsible) {
+                showMessage('Please fill in step name and responsible party', 'error');
+                return;
+            }
+
+            fetch('/api/add_step', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(stepData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                showMessage(data.message, 'success');
+                clearForm();
+                loadSteps();
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showMessage('Failed to add step', 'error');
+            });
+        }
+
+        function loadSampleData() {
+            fetch('/api/load_sample_data', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                showMessage(data.message, 'success');
+                currentSteps = data.steps;
+                displaySteps();
+                generateProcessMap();
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showMessage('Failed to load sample data', 'error');
+            });
+        }
+
+        function loadSteps() {
+            fetch('/api/get_steps')
+            .then(response => response.json())
+            .then(data => {
+                currentSteps = data.steps;
+                displaySteps();
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+        }
+
+        function displaySteps() {
+            const stepsList = document.getElementById('steps-list');
+            stepsList.innerHTML = '';
+
+            currentSteps.forEach(step => {
+                const stepDiv = document.createElement('div');
+                stepDiv.className = 'step-item';
+                stepDiv.innerHTML = `
+                    <div class="step-header">Step ${step.id}: ${step.name}</div>
+                    <div class="step-meta">Responsible: ${step.responsible} | Priority: ${step.priority}</div>
+                    <p>${step.description}</p>
+                    <p><strong>KPI:</strong> ${step.kpi}</p>
+                `;
+                stepsList.appendChild(stepDiv);
+            });
+        }
+
+        function generateProcessMap() {
+            fetch('/api/generate_swimming_lane', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('svg-container').innerHTML = data.svg;
+                document.getElementById('steps-count').textContent = data.stats.steps;
+                document.getElementById('lanes-count').textContent = data.stats.lanes;
+                document.getElementById('zoom-level').textContent = data.stats.zoom + '%';
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showMessage('Failed to generate process map', 'error');
+            });
+        }
+
+        function downloadProcessMap() {
+            fetch('/api/download_pdf', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => {
+                if (response.ok) {
+                    return response.blob();
+                }
+                throw new Error('Download failed');
+            })
+            .then(blob => {
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                a.download = 'autoprocessmap-v108-' + new Date().toISOString().split('T')[0] + '.pdf';
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                showMessage('Process map downloaded successfully!', 'success');
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showMessage('Failed to download process map', 'error');
+            });
+        }
+
+        function clearForm() {
+            document.getElementById('step-name').value = '';
+            document.getElementById('step-description').value = '';
+            document.getElementById('step-responsible').value = '';
+            document.getElementById('step-kpi').value = '';
+            document.getElementById('step-priority').value = 'Medium';
+        }
+
+        function showMessage(message, type) {
+            const messageContainer = document.getElementById('message-container');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+            messageDiv.textContent = message;
+            
+            messageContainer.innerHTML = '';
+            messageContainer.appendChild(messageDiv);
+            
+            setTimeout(() => {
+                messageDiv.remove();
+            }, 5000);
+        }
+    </script>
+</body>
+</html>
+    '''
+
+@app.route('/api/start_session', methods=['POST'])
+def start_session():
+    session_id = str(uuid.uuid4())
+    sessions[session_id] = {
+        'steps': [],
+        'created_at': datetime.now().isoformat()
+    }
+    session['session_id'] = session_id
+    return jsonify({'session_id': session_id, 'message': 'Session started successfully!'})
+
+@app.route('/api/load_sample_data', methods=['POST'])
+def load_sample_data():
+    session_id = session.get('session_id')
+    if not session_id or session_id not in sessions:
+        return jsonify({'error': 'No active session'}), 400
+    
+    sample_steps = [
+        {
+            'id': 1,
+            'name': 'Receive Application',
+            'description': 'Customer submits loan application through online portal',
+            'responsible': 'Customer Service',
+            'kpi': 'Application completeness rate: 95%',
+            'priority': 'High'
+        },
+        {
+            'id': 2,
+            'name': 'Verify Documents',
+            'description': 'Review and validate all submitted documentation',
+            'responsible': 'Compliance Team',
+            'kpi': 'Document verification time: 2 hours',
+            'priority': 'High'
+        },
+        {
+            'id': 3,
+            'name': 'Check Credit Score',
+            'description': 'Perform credit check and risk assessment',
+            'responsible': 'Risk Assessment',
+            'kpi': 'Credit check completion: 30 minutes',
+            'priority': 'High'
+        },
+        {
+            'id': 4,
+            'name': 'Approve Request',
+            'description': 'Management review and approval decision',
+            'responsible': 'Management',
+            'kpi': 'Approval decision time: 4 hours',
+            'priority': 'High'
+        },
+        {
+            'id': 5,
+            'name': 'Setup Customer Account',
+            'description': 'Create customer account and configure services',
+            'responsible': 'IT Department',
+            'kpi': 'Account setup time: 1 hour',
+            'priority': 'Medium'
+        },
+        {
+            'id': 6,
+            'name': 'Send Welcome Kit',
+            'description': 'Prepare and send welcome materials to customer',
+            'responsible': 'Customer Service',
+            'kpi': 'Welcome kit delivery: 24 hours',
+            'priority': 'Low'
+        },
+        {
+            'id': 7,
+            'name': 'Schedule Training',
+            'description': 'Arrange customer onboarding training session',
+            'responsible': 'Training Team',
+            'kpi': 'Training scheduling: 48 hours',
+            'priority': 'Medium'
+        },
+        {
+            'id': 8,
+            'name': 'Conduct Training',
+            'description': 'Deliver comprehensive product training to customer',
+            'responsible': 'Training Team',
+            'kpi': 'Training completion rate: 98%',
+            'priority': 'High'
+        },
+        {
+            'id': 9,
+            'name': 'Follow-up Review',
+            'description': 'Post-training follow-up and satisfaction survey',
+            'responsible': 'Customer Service',
+            'kpi': 'Customer satisfaction: 4.5/5',
+            'priority': 'Medium'
+        }
+    ]
+    
+    sessions[session_id]['steps'] = sample_steps
+    return jsonify({
+        'message': f'Sample data loaded successfully! {len(sample_steps)} steps loaded on infinity board.',
+        'steps': sample_steps
+    })
+
+@app.route('/api/add_step', methods=['POST'])
+def add_step():
+    session_id = session.get('session_id')
+    if not session_id or session_id not in sessions:
+        return jsonify({'error': 'No active session'}), 400
+    
+    data = request.json
+    step_id = len(sessions[session_id]['steps']) + 1
+    
+    new_step = {
+        'id': step_id,
+        'name': data.get('name', ''),
+        'description': data.get('description', ''),
+        'responsible': data.get('responsible', ''),
+        'kpi': data.get('kpi', ''),
+        'priority': data.get('priority', 'Medium')
+    }
+    
+    sessions[session_id]['steps'].append(new_step)
+    return jsonify({'message': 'Step added successfully!', 'step': new_step})
+
+@app.route('/api/get_steps', methods=['GET'])
+def get_steps():
+    session_id = session.get('session_id')
+    if not session_id or session_id not in sessions:
+        return jsonify({'error': 'No active session'}), 400
+    
+    steps = sessions[session_id]['steps']
+    return jsonify({'steps': steps})
+
+@app.route('/api/generate_swimming_lane', methods=['POST'])
+def generate_swimming_lane():
+    session_id = session.get('session_id')
+    if not session_id or session_id not in sessions:
+        return jsonify({'error': 'No active session'}), 400
+    
+    steps = sessions[session_id]['steps']
+    if not steps:
+        return jsonify({'error': 'No steps available'}), 400
+    
+    lanes = list(set(step['responsible'] for step in steps))
+    
+    svg_width = max(1200, len(steps) * 150 + 300)
+    svg_height = len(lanes) * 120 + 100
+    
+    svg_content = f'''
+    <svg width="{svg_width}" height="{svg_height}" xmlns="http://www.w3.org/2000/svg">
+    <style>
+        .lane-header {{ fill: #2563eb; font-family: Arial, sans-serif; font-size: 14px; font-weight: bold; }}
+        .step-box {{ fill: #e0f2fe; stroke: #2563eb; stroke-width: 2; rx: 8; }}
+        .step-text {{ fill: #1e40af; font-family: Arial, sans-serif; font-size: 12px; }}
+        .step-title {{ font-weight: bold; }}
+    </style>'''
+    
+    for i, lane in enumerate(lanes):
+        y = i * 120 + 50
+        svg_content += f'''
+        <rect x="10" y="{y}" width="120" height="80" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="1" rx="4"/>
+        <text class="lane-header" x="15" y="{y + 25}">{lane[:12]}...</text>'''
+    
+    for step in steps:
+        lane_index = lanes.index(step['responsible'])
+        x = (step['id'] - 1) * 150 + 150
+        y = lane_index * 120 + 70
+        
+        svg_content += f'''
+        <rect class="step-box" x="{x}" y="{y}" width="130" height="80"/>
+        <text class="step-text step-title" x="{x + 5}" y="{y + 15}">Step {step['id']}</text>
+        <text class="step-text" x="{x + 5}" y="{y + 30}">{step['name'][:15]}...</text>
+        <text class="step-text" x="{x + 5}" y="{y + 45}">{step['priority']}</text>'''
+        
+        if step['id'] < len(steps):
+            next_step = next((s for s in steps if s['id'] == step['id'] + 1), None)
+            if next_step:
+                next_lane_index = lanes.index(next_step['responsible'])
+                next_x = step['id'] * 150 + 150
+                next_y = next_lane_index * 120 + 110
+                
+                svg_content += f'''
+                <line x1="{x + 130}" y1="{y + 40}" x2="{next_x}" y2="{next_y}" 
+                      stroke="#2563eb" stroke-width="2" marker-end="url(#arrowhead)"/>'''
+    
+    svg_content += '''
+    <defs>
+        <marker id="arrowhead" markerWidth="10" markerHeight="7" 
+                refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#2563eb"/>
+        </marker>
+    </defs>
+    </svg>'''
+    
+    return jsonify({
+        'svg': svg_content,
+        'stats': {
+            'steps': len(steps),
+            'lanes': len(lanes),
+            'zoom': 100
+        }
+    })
+
+@app.route('/api/download_pdf', methods=['POST'])
+def download_pdf():
+    session_id = session.get('session_id')
+    if not session_id or session_id not in sessions:
+        return jsonify({'error': 'No active session'}), 400
+    
+    steps = sessions[session_id]['steps']
+    if not steps:
+        return jsonify({'error': 'No steps available'}), 400
+    
+    html_content = f'''
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <title>AutoProcessMap - Process Documentation</title>
+        <style>
+            body {{ font-family: Arial, sans-serif; margin: 20px; }}
+            .header {{ text-align: center; margin-bottom: 30px; }}
+            .step {{ margin-bottom: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 8px; }}
+            .step-title {{ font-weight: bold; color: #2563eb; margin-bottom: 5px; }}
+            .step-meta {{ color: #666; font-size: 14px; }}
+        </style>
+    </head>
+    <body>
+        <div class="header">
+            <h1>AutoProcessMap v1.08</h1>
+            <h2>Process Documentation</h2>
+            <p>Generated on: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}</p>
+            <p>Total Steps: {len(steps)} | Reference: autoprocessmap-production</p>
+        </div>
+        
+        <h3>Process Steps:</h3>'''
+    
+    for step in steps:
+        html_content += f'''
+        <div class="step">
+            <div class="step-title">Step {step['id']}: {step['name']}</div>
+            <div class="step-meta">Responsible: {step['responsible']} | Priority: {step['priority']}</div>
+            <p>{step['description']}</p>
+            <p><strong>KPI:</strong> {step['kpi']}</p>
+        </div>'''
+    
+    html_content += '''
+    </body>
+    </html>'''
+    
+    pdf_buffer = io.BytesIO()
+    weasyprint.HTML(string=html_content).write_pdf(pdf_buffer)
+    pdf_buffer.seek(0)
+    
+    return send_file(
+        pdf_buffer,
+        as_attachment=True,
+        download_name=f'autoprocessmap-{datetime.now().strftime("%Y%m%d")}.pdf',
+        mimetype='application/pdf'
+    )
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000, debug=True)
+
+==========================================
+
+DEPLOYMENT INSTRUCTIONS FOR SINGLE FILE
+========================================
+
+OPTION 1: Replit (Easiest)
+--------------------------
+1. Go to replit.com
+2. Create new Python project
+3. Replace main.py with the code above
+4. Click Run
+5. Get instant live URL
+
+OPTION 2: Railway/Heroku
+-----------------------
+1. Create GitHub repository
+2. Create app.py file with the code above
+3. Create requirements.txt with:
+   flask
+   flask-cors
+   weasyprint
+   gunicorn
+4. Deploy to Railway or Heroku
+
+OPTION 3: Local Testing
+----------------------
+1. Save as app.py
+2. Install: pip install flask flask-cors weasyprint
+3. Run: python app.py
+4. Open: http://localhost:5000
+
+Your complete AutoProcessMap v1.08 in ONE FILE!
+===============================================
